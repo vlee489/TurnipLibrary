@@ -7,13 +7,13 @@ import enum
 import logging
 import math
 import sys
-from typing import Callable, Dict, Generator, Optional, Type, Union
+from typing import Callable, Dict, Generator, List, Optional, Type, Union
 
 
 logging.basicConfig(level=(logging.DEBUG))
 
 
-def find_lower_bound(value: int, base: int, precision: str = '0.0001') -> float:
+def find_lower_bound(value: int, base: float, precision: str = '0.0001') -> float:
     """
     This awful function computes the smallest float x such that:
     ceil(x * base) == value
@@ -29,7 +29,7 @@ def find_lower_bound(value: int, base: int, precision: str = '0.0001') -> float:
     return lower_approx
 
 
-def find_upper_bound(value: int, base: int, precision: str = '0.0001') -> float:
+def find_upper_bound(value: int, base: float, precision: str = '0.0001') -> float:
     """
     This awful function computes the largest float x such that:
     ceil(x * base) == value
@@ -122,7 +122,9 @@ class Modifier:
                  parent: Optional[Modifier] = None):
         self._base = base
         self._parent = parent
-        self._exact_price = None
+        self._exact_price: Optional[float] = None
+        self._static_low: Optional[float] = None
+        self._static_high: Optional[float] = None
 
     def __str__(self) -> str:
         low = self.lower_bound
@@ -134,6 +136,8 @@ class Modifier:
 
     @property
     def lower_bound(self) -> float:
+        if self._static_low is not None:
+            return self._static_low
         return self._default_lower_bound()
 
     def _default_upper_bound(self) -> float:
@@ -141,6 +145,8 @@ class Modifier:
 
     @property
     def upper_bound(self) -> float:
+        if self._static_high is not None:
+            return self._static_high
         return self._default_upper_bound()
 
     @property
@@ -152,6 +158,81 @@ class Modifier:
             self.lower_bound * self._base.lower,
             self.upper_bound * self._base.upper
         )
+
+    def fix_price(self, price: int) -> None:
+        price_window = self.price
+
+        # Check that the new price isn't immediately outside of what we presently consider possible
+        if price < math.ceil(price_window.lower):
+            msg = 'Cannot fix price at {:d}, below model minimum {:d}'.format(price, math.ceil(price_window.lower))
+            raise ArithmeticError(msg)
+        if price > math.ceil(price_window.upper):
+            msg = 'Cannot fix price at {:d}, above model maximum {:d}'.format(price, math.ceil(price_window.upper))
+            raise ArithmeticError(msg)
+
+        # Calculate our presently understood modifier bounds
+        current_mod_low = self.lower_bound
+        current_mod_high = self.upper_bound
+        logging.debug('current modifier range: [{:0.4f}, {:0.4f}]'.format(current_mod_low, current_mod_high))
+
+        # For the price given, determine the modifiers that could have produced that value.
+        # NB: Accommodate an unknown base price by computing against the lower and upper bounds of the base price.
+        #
+        # NB2: The boundaries here can change over time, depending on a few things:
+        # (1) If the base price range is refined in the future, this calculation could change.
+        #     (At present, MultiModel always builds models with fixed base prices, not ranges.)
+        #
+        # (2) If we are a dynamic modifier node and any of our parents refine THEIR bounds, this could change.
+        #     This is generally only a problem when there are gaps in the data;
+        #     Subsequent constraints will be necessarily less accurate.
+        #
+        # FIXME: Once this computation is performed, it's completely static. Oops!
+        #        This code needs to be a little more dynamically adaptable.
+
+        modifiers = []
+        for bound in (self._base.lower, self._base.upper):
+            modifiers.append(find_lower_bound(price, bound))
+            modifiers.append(find_upper_bound(price, bound))
+        new_mod_low = min(modifiers)
+        new_mod_high = max(modifiers)
+        logging.debug('fixed modifier range: [{:0.4f}, {:0.4f}]'.format(new_mod_low, new_mod_high))
+
+        # If our modifiers are out of scope, we can reject the price for this model.
+        if new_mod_low > current_mod_high:
+            msg = 'New low modifier ({:0.4f}) out of range [{:0.4f}, {:0.4f}]'.format(new_mod_low, current_mod_low, current_mod_high)
+            raise ArithmeticError(msg)
+        if new_mod_high < current_mod_low:
+            msg = 'New high modifier ({:0.4f}) out of range [{:0.4f}, {:0.4f}]'.format(new_mod_high, current_mod_low, current_mod_high)
+            raise ArithmeticError(msg)
+        assert new_mod_low <= new_mod_high, 'God has left us'
+
+        # Our calculated modifier range might overlap with the base model range.
+        # Base: [    LxxxxxxH      ]
+        # Calc: [ lxxxxxh          ]
+        # Calc: [        lxxxxh    ]
+        #
+        # i.e. our low end may be lower then the existing low end,
+        # or the high end might be higher then the existing high end.
+        #
+        # The assertions in the code block above only assert that:
+        # (1) l <= H
+        # (2) h >= L
+        #
+        # Which means that these formulations are valid:
+        # Base: [    LxxxxxxH      ]
+        # Calc: [           lxxxxh ]
+        # Calc: [ lxxh             ]
+        #
+        # This is fine, it just means that we can rule out some of the modifiers
+        # in the range of possibilities.
+        # Clamp the new computed ranges to respect the original boundaries.
+        new_mod_low = max(new_mod_low, current_mod_low)
+        new_mod_high = min(new_mod_high, current_mod_high)
+        logging.debug('clamped modifier range: [{:0.4f}, {:0.4f}]'.format(new_mod_low, new_mod_high))
+
+        self._static_low = new_mod_low
+        self._static_high = new_mod_high
+        self._exact_price = price
 
 
 class RootModifier(Modifier):
@@ -225,41 +306,8 @@ class RapidDecay(DynamicModifier):
     delta_lower = -0.10
     delta_upper = -0.04
 
-    # FIXME: this nasty baby below
 
-#    def fix_price(self, price: 'int') -> 'None':
-#        price_window = self.price
-#        if price < math.ceil(price_window.lower):
-#            msg = 'Cannot fix price at {:d}, below model minimum {:d}'.format(price, math.ceil(price_window.lower))
-#            raise ArithmeticError(msg)
-#        if price > math.ceil(price_window.upper):
-#            msg = 'Cannot fix price at {:d}, above model maximum {:d}'.format(price, math.ceil(price_window.upper))
-#            raise ArithmeticError(msg)
-#        current_mod_low = self.modifier_low
-#        current_mod_high = self.modifier_high
-#        logging.debug('current modifier range: [{:0.4f}, {:0.4f}]'.format(current_mod_low, current_mod_high))
-#        modifiers = []
-#        for bound in (self._base.lower, self._base.upper):
-#            modifiers.append(find_lower_bound(price, bound))
-#            modifiers.append(find_upper_bound(price, bound))
-#
-#        new_mod_low = min(modifiers)
-#        new_mod_high = max(modifiers)
-#        logging.debug('fixed modifier range: [{:0.4f}, {:0.4f}]'.format(new_mod_low, new_mod_high))
-#        if new_mod_low > current_mod_high:
-#            msg = 'New low modifier ({:0.4f}) out of range [{:0.4f}, {:0.4f}]'.format(new_mod_low, current_mod_low, current_mod_high)
-#            raise ArithmeticError(msg)
-#        if new_mod_high < current_mod_low:
-####            msg = 'New high modifier ({:0.4f}) out of range [{:0.4f}, {:0.4f}]'.format(new_mod_high, current_mod_low, current_mod_high)
-#            raise ArithmeticError(msg)
-#        assert new_mod_low <= new_mod_high, 'God has left us'
-#        new_mod_low = max(new_mod_low, current_mod_low)
-#        new_mod_high = min(new_mod_high, current_mod_high)
-#        logging.debug('clamped modifier range: [{:0.4f}, {:0.4f}]'.format(new_mod_low, new_mod_high))
-#        self._static_low = new_mod_low
-#        self._static_high = new_mod_high
-#        self._fixed_price = price
-
+AnyTime = Union[str, int, 'TimePeriod']
 
 class TimePeriod(enum.Enum):
     Sunday_AM = 0
@@ -276,6 +324,14 @@ class TimePeriod(enum.Enum):
     Friday_PM = 11
     Saturday_AM = 12
     Saturday_PM = 13
+
+    @classmethod
+    def normalize(cls, value: AnyTime) -> TimePeriod:
+        if isinstance(value, TimePeriod):
+            return value
+        if isinstance(value, int):
+            return cls(value)
+        return cls[value]
 
 
 class Model:
@@ -442,7 +498,7 @@ class SpikeModel(Model):
         return f"Spike@{self.initial.precise}; peak@{self._pattern_peak.name}"
 
     @classmethod
-    def inner_permutations(cls, initial: int) -> Generator[BumpModel, None, None]:
+    def inner_permutations(cls, initial: int) -> Generator[SpikeModel, None, None]:
         # Pattern can start on 3rd-9th slot
         # [Monday PM - Thursday PM]
         for patt in range(3, 10):
@@ -466,20 +522,15 @@ class MultiModel:
             self._models[i] = model
             i += 1
 
-    def fix_price(self, time: Union[str, TimePeriod], price: int) -> None:
+    def fix_price(self, time: AnyTime, price: int) -> None:
         if not self._models:
             assert RuntimeError("No viable models to fix prices on!")
 
-        if isinstance(time, TimePeriod):
-            timeslice = time
-        else:
-            timeslice = TimePeriod[time]
-
+        timeslice = TimePeriod.normalize(time)
         remove_queue = []
         for index, model in self._models.items():
             try:
-                raise ArithmeticError("WIP sorry")
-                #model.timeline[timeslice].fix_price(price)
+                model.timeline[timeslice].fix_price(price)
             except ArithmeticError as exc:
                 print(f"Ruled out model: {model.name}")
                 print(f"  Reason: {timeslice.name} price={price} not possible:")
@@ -488,6 +539,26 @@ class MultiModel:
 
         for i in remove_queue:
             del self._models[i]
+
+    def report(self) -> None:
+        bins: Dict[str, List[Model]] = {}
+        for model in self._models.values():
+            mtype = model.__class__.__name__
+            bins.setdefault(mtype, []).append(model)
+
+        print("Model Analysis:")
+        for name, models in bins.items():
+            print(f"{name}: {len(models)} model(s) remaining")
+            prices = set()
+            for model in models:
+                prices.add(model.initial.precise)
+            print(f"  base prices: {prices}")
+
+    def chatty_fix_price(self, time: AnyTime, price: int) -> None:
+        timeslice = TimePeriod.normalize(time)
+        self.fix_price(time, price)
+        print(f"Added {timeslice.name} @ {price};")
+        self.report()
 
     def __bool__(self) -> bool:
         return bool(self._models)
