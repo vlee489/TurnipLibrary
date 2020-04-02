@@ -372,6 +372,92 @@ class Model:
         for tprice in range(lower, upper + 1):
             yield from cls.inner_permutations(tprice)
 
+    def fix_price(self, time: AnyTime, price: int) -> None:
+        timeslice = TimePeriod.normalize(time)
+        self.timeline[timeslice].fix_price(price)
+
+
+class TripleModel(Model):
+    def __init__(self,
+                 initial: Price,
+                 length_phase1: int,
+                 length_decay1: int,
+                 length_phase2: int):
+
+        super().__init__(initial)
+
+        if not 0 <= length_phase1 <= 6:
+            raise ValueError("Phase1 length must be between [0, 6]")
+        self._length_phase1 = length_phase1
+
+        if not 2 <= length_decay1 <= 3:
+            raise ValueError("Decay1 length must be 2 or 3")
+        self._length_decay1 = length_decay1
+        self._length_decay2 = 5 - length_decay1
+
+        remainder = 7 - length_phase1
+        if not 1 <= length_phase2 <= remainder:
+            raise ValueError(f"Phase2 must be between [1, {remainder}]")
+        self._length_phase2 = length_phase2
+        self._length_phase3 = remainder - length_phase2
+
+        assert (self._length_phase1
+                + self._length_phase2
+                + self._length_phase3
+                + self._length_decay1
+                + self._length_decay2) == 12
+
+        chain: List[Modifier] = []
+        decay_class: Type[Modifier]
+
+        def _push_node(mod_cls: Type[Modifier]) -> None:
+            mod = mod_cls(self.initial, chain[-1] if chain else None)
+            chain.append(mod)
+
+        # Phase 1 [0, 6]
+        for _ in range(0, self._length_phase1):
+            _push_node(SmallProfit)
+
+        # Decay 1 [2, 3]
+        decay_class = MediumLoss
+        for _ in range(0, self._length_decay1):
+            _push_node(decay_class)
+            decay_class = RapidDecay
+
+        # Phase 2 [1, 6]
+        for _ in range(0, self._length_phase2):
+            _push_node(SmallProfit)
+
+        # Decay 2 [2, 3]
+        decay_class = MediumLoss
+        for _ in range(0, self._length_decay2):
+            _push_node(decay_class)
+            decay_class = RapidDecay
+
+        # Phase 3 [0, 6]
+        for _ in range(0, self._length_phase3):
+            _push_node(SmallProfit)
+
+        # Build timeline
+        assert len(chain) == 12
+        for i, mod in enumerate(chain):
+            time = TimePeriod(i + 2)
+            self.timeline[time] = mod
+
+    @property
+    def name(self) -> str:
+        params = [self._length_phase1, self._length_decay1,
+                  self._length_phase2, self._length_decay2,
+                  self._length_phase3]
+        return f"Triple@{str(self.initial)} {str(params)}"
+
+    @classmethod
+    def inner_permutations(cls, initial: int) -> Generator[TripleModel, None, None]:
+        for phase1 in range(0, 6 + 1):  # [0, 6] inclusive
+            for decay1 in (2, 3):
+                for phase2 in range(1, 7 - phase1 + 1):  # [1, 7 - phase1] inclusive
+                    yield cls(Price(initial), phase1, decay1, phase2)
+
 
 class DecayModel(Model):
     def __init__(self, initial: Price):
@@ -440,7 +526,7 @@ class BumpModel(Model):
 
     @property
     def name(self) -> str:
-        return f"Bump@{self.initial.precise}; peak@{self._pattern_peak.name}"
+        return f"Bump@{str(self.initial)}; peak@{self._pattern_peak.name}"
 
     @classmethod
     def inner_permutations(cls, initial: int) -> Generator[BumpModel, None, None]:
@@ -510,17 +596,11 @@ class MultiModel:
         i = 0
         self._models = {}
 
-        for model in DecayModel.permutations(initial):
-            self._models[i] = model
-            i += 1
-
-        for model in BumpModel.permutations(initial):
-            self._models[i] = model
-            i += 1
-
-        for model in SpikeModel.permutations(initial):
-            self._models[i] = model
-            i += 1
+        classes: List[Type[Model]] = [TripleModel, SpikeModel, DecayModel, BumpModel]
+        for cls in classes:
+            for model in cls.permutations(initial):
+                self._models[i] = model
+                i += 1
 
     def fix_price(self, time: AnyTime, price: int) -> None:
         if not self._models:
@@ -530,7 +610,7 @@ class MultiModel:
         remove_queue = []
         for index, model in self._models.items():
             try:
-                model.timeline[timeslice].fix_price(price)
+                model.fix_price(timeslice, price)
             except ArithmeticError as exc:
                 print(f"Ruled out model: {model.name}")
                 print(f"  Reason: {timeslice.name} price={price} not possible:")
