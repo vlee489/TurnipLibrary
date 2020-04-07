@@ -28,7 +28,8 @@ def main():
         'python_requires': '>=3.7',
 	'entry_points': {
             'console_scripts': [
-                'turnips = turnips:main',
+                'turnips = turnips.script:main',
+                'turnips-example = turnips.example:main',
             ]
         },
     }
