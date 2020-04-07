@@ -85,11 +85,15 @@ island will get:
 
 - A list of possible models that island is following, grouped by model
   type. (Triple, Spike, Decay, Bump)
+
   - If a model group has only one viable model left, that model is
     printed without odds.
+
   - If a model group has several models left, a summary is printed for
     just that model group.
+
 - If an island has at least two models left in any category, a summary
   is printed for that island.
+
 - A summary is printed in aggregate for all the islands, giving your
   friend group an idea of what prices they can expect for the week.
