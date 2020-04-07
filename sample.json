@@ -1,0 +1,11 @@
+{ "my_island": {
+    "Sunday_AM": 110,
+    "Monday_AM": 53,
+    "Monday_PM": 49
+  },
+  "tom's island": {
+    "Sunday_AM": 93,
+    "Monday_AM": 84,
+    "Monday_PM": 81
+  }
+}

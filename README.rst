@@ -71,10 +71,25 @@ If you create a JSON file called `islands.json` and fill it like this::
     },
     "tom's island": {
       "Sunday_AM": 93,
-      "Monday_AM": 85,
+      "Monday_AM": 84,
       "Monday_PM": 81
     }
   }
 
 you can run `turnips islands.json` from the command line to see a
 multi-group probability report and forecast.
+
+See `example.json` in the repo for sample multi-island data input, and
+`example.txt` for the type of output it provides.  Notably, each
+island will get:
+
+- A list of possible models that island is following, grouped by model
+  type. (Triple, Spike, Decay, Bump)
+  - If a model group has only one viable model left, that model is
+    printed without odds.
+  - If a model group has several models left, a summary is printed for
+    just that model group.
+- If an island has at least two models left in any category, a summary
+  is printed for that island.
+- A summary is printed in aggregate for all the islands, giving your
+  friend group an idea of what prices they can expect for the week.
