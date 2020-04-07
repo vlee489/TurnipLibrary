@@ -1,0 +1,6 @@
+.mypy_cache
+.*~
+__pycache__
+turnips.egg-info
+turnips/__pycache__
+turnips/.mypy_cache
