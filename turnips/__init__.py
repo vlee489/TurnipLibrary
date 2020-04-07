@@ -413,7 +413,39 @@ class TimePeriod(enum.Enum):
         return cls[value]
 
 
+Markov = {'Triple': {'Triple':  0.2,
+                     'Spike':   0.3,
+                     'Decay':   0.15,
+                     'Bump':    0.35,
+                    },
+          'Spike':  {'Triple':  0.5,
+                     'Spike':   0.05,
+                     'Decay':   0.2,
+                     'Bump':    0.25,
+                    },
+          'Decay':  {'Triple':  0.25,
+                     'Spike':   0.45,
+                     'Decay':   0.05,
+                     'Bump':    0.25,
+                    },
+          'Bump':   {'Triple':  0.45,
+                     'Spike':   0.25,
+                     'Decay':   0.15,
+                     'Bump':    0.15,
+                    },
+          None:     {'Bump':    1.0,
+                    },
+          'Unknown':{'Triple':  0.25,
+                     'Spike':   0.25,
+                     'Decay':   0.25,
+                     'Bump':    0.25,
+                     },
+        }
+
+
 class Model:
+    shortname: str
+
     def __init__(self, initial: Price):
         self.initial = initial
         self.timeline: Dict[TimePeriod, Modifier] = {}
@@ -467,6 +499,8 @@ class Model:
 
 
 class TripleModel(Model):
+    shortname = 'Triple'
+
     def __init__(self,
                  initial: Price,
                  length_phase1: int,
@@ -545,7 +579,7 @@ class TripleModel(Model):
 
     @property
     def name(self) -> str:
-        return f"Triple@{str(self.initial)} {str(self.phases)}"
+        return f"{self.shortname}@{str(self.initial)} {str(self.phases)}"
 
     @classmethod
     def inner_permutations(cls, initial: int) -> Generator[TripleModel, None, None]:
@@ -556,6 +590,8 @@ class TripleModel(Model):
 
 
 class DecayModel(Model):
+    shortname = 'Decay'
+
     def __init__(self, initial: Price):
         super().__init__(initial)
         mod: Modifier
@@ -575,14 +611,13 @@ class DecayModel(Model):
 
     @property
     def name(self) -> str:
-        return f"Decay@{str(self.initial)}"
+        return f"{self.shortname}@{str(self.initial)}"
 
 
 class PeakModel(Model):
     _pattern_latest = 9
     _pattern_earliest: int
     _peak_time: int
-    _name: str
 
     def __init__(self,
                  initial: 'Price',
@@ -609,13 +644,13 @@ class PeakModel(Model):
 
     @property
     def name(self) -> str:
-        return f"{self._name}@{str(self.initial)}; peak@{self.peak.name}"
+        return f"{self.shortname}@{str(self.initial)}; peak@{self.peak.name}"
 
 
 class BumpModel(PeakModel):
     _pattern_earliest = 2  # Monday AM
     _peak_time = 3         # Fourth price of pattern
-    _name = "Bump"
+    shortname = "Bump"
 
     def __init__(self,
                  initial: 'Price',
@@ -668,7 +703,7 @@ class BumpModel(PeakModel):
 class SpikeModel(PeakModel):
     _pattern_earliest = 3  # Monday PM
     _peak_time = 2         # Third price of pattern
-    _name = "Spike"
+    shortname = "Spike"
 
     def __init__(self,
                  initial: 'Price',
