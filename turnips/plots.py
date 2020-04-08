@@ -90,6 +90,7 @@ def plot_models_range(name: str,
     ax.xaxis.set_ticks(range(2, 14))
     plt.xticks(rotation=45)
     plt.grid(axis='both', which='both', ls='--')
+    ax.set_ylim(0, 660)
     plt.tight_layout()
 
 

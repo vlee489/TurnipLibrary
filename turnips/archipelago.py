@@ -88,7 +88,7 @@ class Island:
 
         base = self._data.base_price
         if self.initial_week:
-            self._models = BumpModels(base)
+            self._models = BumpModels()
         else:
             self._models = MetaModel.blank(base)
 
