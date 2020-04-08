@@ -31,8 +31,12 @@ How do I use this?
 This is really meant as a library and not as an end-user tool, but
 there is a little interface you can configure to see some graphs.
 
-Look at ``sample.yml`` or ``sample.json`` -- both file formats work, use
-whichever format you are most comfortable with.
+Look at `sample.yml
+<https://gitlab.com/nanoNago/turnips/-/blob/master/sample.yml>`_ or
+`sample.json
+<https://gitlab.com/nanoNago/turnips/-/blob/master/sample.json>`_ --
+both file formats work, use whichever format you are most comfortable
+with.
 
 Edit them to reflect your and your friends' islands as best as you are
 able into a file named e.g. ``islands.json``
@@ -79,11 +83,10 @@ Some notes on this format:
 When you're good and ready, you can run ``turnips --plot islands.json`` from
 the command line to see a multi-group probability report and forecast.
 
-If you use ``--plot``, you'll also see some graphs and charts that help
-illustrate your Stalk Market Futures.
-
-You can look at ``sample.txt`` in the repo for an example of what the
-multi-island forecast looks like via text. Notably, each island gets:
+You can look at `sample.txt
+<https://gitlab.com/nanoNago/turnips/-/blob/master/sample.txt>`_ in
+the repo for an example of what the multi-island forecast looks like
+via text. Notably, each island gets:
 
 - A list of possible models that island is following, grouped by model
   type. (Triple, Spike, Decay, Bump)
@@ -99,6 +102,25 @@ multi-island forecast looks like via text. Notably, each island gets:
 
 - A summary is printed in aggregate for all the islands, giving your
   friend group an idea of what prices they can expect for the week.
+
+
+Graphs
+------
+
+If you use ``--plot``, you'll also see some graphs and charts that help
+illustrate your Stalk Market Futures.
+
+.. figure:: static/my_island.png
+
+	    Turnip forecast for "my_island", from sample.json
+
+.. figure:: static/toms_island.png
+
+	    Turnip forecast for "tom's island", from sample.json
+
+.. figure:: static/sample_forecast.png
+
+	    Turnip price forecast for both me and tom, from sample.json
 
 
 Developer Info
