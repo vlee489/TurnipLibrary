@@ -28,60 +28,62 @@ can look identical until the spike happens.
 How do I use this?
 ------------------
 
-This is really meant as a library and not as an end-user tool.
+This is really meant as a library and not as an end-user tool, but
+there is a little interface you can configure to see some graphs.
 
-The library can be used by creating a MetaModel() object, like this:
+Look at ``sample.yml`` or ``sample.json`` -- both file formats work, use
+whichever format you are most comfortable with.
 
-`>>> prices = turnips.MetaModel.blank()`
+Edit them to reflect your and your friends' islands as best as you are
+able into a file named e.g. ``islands.json``
 
-then you can get a report:
+The json file should look like this::
 
-`>>> prices.report()`
-
-Or just the probability for the week:
-
-`>>> prices.summary()`
-
-If you know what price was being offered on your island *and you did
-not buy turnips from Daisy Mae for the first time*, you can narrow
-down the possibilities:
-
-`>>> prices = turnips.MetaModel.blank(98)`
-
-To start entering prices, start at Monday_AM whenever possible, and then:
-
-- `>>> prices.fix_price('Monday_AM', 53)`
-- `>>> prices.fix_price('Monday_PM', 49)`
-
-or, you can use numerical digits to represent the timeslots; this is equivalent:
-
-- `>>> prices.fix_price(2, 53)`
-- `>>> prices.fix_price(3, 49)`
-
-
-How do I use the multi-island summary report?
----------------------------------------------
-
-If you create a JSON file called `islands.json` and fill it like this::
-
-  { "my_island": {
-      "Sunday_AM": 110,
-      "Monday_AM": 53,
-      "Monday_PM": 49
-    },
-    "tom's island": {
-      "Sunday_AM": 93,
-      "Monday_AM": 84,
-      "Monday_PM": 81
+  { "islands": {
+      "my_island": {
+        "initial_week": true,
+        "timeline": {
+          "Sunday_AM": 110,
+          "Monday_AM": 53,
+          "Monday_PM": 49
+        }
+      },
+      "tom's island": {
+        "previous_week": "bump",
+        "timeline": {
+          "Sunday_AM": 93,
+          "Monday_AM": 84,
+          "Monday_PM": 81
+        }
+      }
     }
   }
 
-you can run `turnips islands.json` from the command line to see a
-multi-group probability report and forecast.
 
-See `example.json` in the repo for sample multi-island data input, and
-`example.txt` for the type of output it provides.  Notably, each
-island will get:
+
+Some notes on this format:
+
+- Set "initial_week" to true if the owner of that island has purchased
+  turnips on their own island for the first time that week. This
+  forces a BumpModel week, but obscures your buy price.
+
+- Set "previous_week" to the name of the kind of week you had last
+  week: "Bump", "Spike", "Decay", "Triple". This will adjust the
+  statistics to show you the most likely week you're having now.
+
+- Use "Sunday_AM" to set the purchase price on your island, NOT the
+  price you purchased your turnips at. (e.g., not your friend's
+  island's prices.)
+
+
+When you're good and ready, you can run ``turnips --plot islands.json`` from
+the command line to see a multi-group probability report and forecast.
+
+If you use ``--plot``, you'll also see some graphs and charts that help
+illustrate your Stalk Market Futures.
+
+You can look at ``sample.txt`` in the repo for an example of what the
+multi-island forecast looks like via text. Notably, each island gets:
 
 - A list of possible models that island is following, grouped by model
   type. (Triple, Spike, Decay, Bump)
@@ -97,3 +99,48 @@ island will get:
 
 - A summary is printed in aggregate for all the islands, giving your
   friend group an idea of what prices they can expect for the week.
+
+
+Developer Info
+--------------
+
+The core of this library are "Models", each Model is a blueprint for
+the type of week you can have. You can create model groups, like
+`SpikeModels` or `TripleModels` which collect blueprints for those
+types of weeks in particular.
+
+At the top is the `MetaModel`, which collects every last kind of week
+you can possibly have.
+
+The library can be used by creating a MetaModel() object, like this:
+
+``>>> prices = turnips.meta.MetaModel.blank()``
+
+then you can get a report:
+
+``>>> prices.report()``
+
+Or just the probability for the week:
+
+``>>> prices.summary()``
+
+If you know what price was being offered on your island *and you did
+not buy turnips from Daisy Mae for the first time*, you can narrow
+down the possibilities:
+
+``>>> prices = turnips.meta.MetaModel.blank(98)``
+
+To start entering prices, start at Monday_AM whenever possible, and then:
+
+- ``>>> prices.fix_price('Monday_AM', 53)``
+- ``>>> prices.fix_price('Monday_PM', 49)``
+
+or, you can use numerical digits to represent the timeslots; this is equivalent:
+
+- ``>>> prices.fix_price(2, 53)``
+- ``>>> prices.fix_price(3, 49)``
+
+For more advanced usages, take a look at ``archipelago.py`` which has
+``Archipelago`` and ``Island`` classes that aggregate information for a
+group of islands (you and your friends) or the data for a single
+island (you) and can help print graphs and forecasts.
