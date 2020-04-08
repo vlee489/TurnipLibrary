@@ -1,13 +1,6 @@
 #!/usr/bin/env python3
 
-import json
-
 from turnips import archipelago
-
-from turnips.plots import plot_models_range, global_plot
-# pylint: disable=unused-import
-from turnips.model import TRIPLE, SPIKE, DECAY, BUMP, UNKNOWN
-
 
 EXAMPLE_DATA = '''
 {
@@ -179,15 +172,9 @@ EXAMPLE_DATA = '''
 '''
 
 def main() -> None:
-    jdata = json.loads(EXAMPLE_DATA)
-    raw_data = archipelago.Archipelago.parse_obj(jdata)
-    island_models = archipelago.process_data(raw_data)
-    for name, idata in island_models.items():
-        plot_models_range(name,
-                          list(idata.models),
-                          raw_data.islands[name].previous_week)
-
-    global_plot(island_models.values())
+    # See also `turnips.py --plot sample.json`
+    islands = archipelago.Archipelago.load_json(EXAMPLE_DATA)
+    islands.plot()
 
 
 if __name__ == '__main__':

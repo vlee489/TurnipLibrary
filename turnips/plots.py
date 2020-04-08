@@ -79,9 +79,9 @@ def plot_models_range(name: str,
             plt.scatter(days, high_vals, c='black', s=2)
 
     # cosmetics
-    msummary = '+'.join(['{}_{{{}}}^{{{:.2f}}}'.format(t, l, adjusted_priors[l])
+    msummary = '+'.join(['{}_{{{}}}^{{{:.2f}}}'.format(t, l.name, adjusted_priors[l])
                          for l, t in model_counts.items()])
-    ax.set_title(f'Island {name}: ${len(models)}_{{total}}={msummary}$, Last: {previous}')
+    ax.set_title(f'Island {name}: ${len(models)}_{{total}}={msummary}$, Last: {previous.name}')
     ax.set_ylabel('Turnip Price')
     ax.set_xticklabels(['Mon AM', 'Mon PM', 'Tue AM', 'Tue PM', 'Wed AM', 'Wed PM',
                         'Thu AM', 'Thu PM', 'Fri AM', 'Fri PM', 'Sat AM', 'Sat PM'])
