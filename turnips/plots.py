@@ -25,6 +25,9 @@ def plot_models_range(name: str,
     Shows ~probability of various prices based on your possible models.
     '''
 
+    if len(models) == 0:
+        return None
+
     colors = {
         TRIPLE: 'orange',
         SPIKE: 'green',
