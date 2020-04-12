@@ -13,7 +13,7 @@ from turnips.meta import MetaModel
 from turnips.multi import MultiModel, BumpModels
 from turnips.ttime import TimePeriod
 
-from turnips.plots import plot_models_range, global_plot
+from turnips.plots import plot_models_range_interactive, plot_models_range_data, global_plot
 
 
 # pylint: disable=too-few-public-methods, no-self-use, no-self-argument
@@ -100,6 +100,13 @@ class Island:
             logging.info(f"[{time.name}]: fixing price @ {price}")
             self._models.fix_price(time, price)
 
+    def plot(self):
+        return plot_models_range_data(
+            self.name,
+            list(self.model_group.models),
+            self.previous_week
+        )
+
 
 class Archipelago:
     def __init__(self, data: ArchipelagoModel):
@@ -157,7 +164,7 @@ class Archipelago:
 
     def plot(self) -> None:
         for island in self.islands:
-            plot_models_range(island.name,
-                              list(island.model_group.models),
-                              island.previous_week)
+            plot_models_range_interactive(island.name,
+                                          list(island.model_group.models),
+                                          island.previous_week)
         global_plot(self.groups)

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from collections import Counter
+import io
 from typing import Iterable, Sequence
 
 import matplotlib.pyplot as plt
@@ -10,6 +11,7 @@ from turnips.model import TRIPLE, SPIKE, DECAY, BUMP, Model, ModelEnum
 from turnips.multi import MultiModel
 from turnips.ttime import TimePeriod
 from turnips.markov import MARKOV
+
 
 def plot_models_range(name: str,
                       models: Sequence[Model],
@@ -90,7 +92,37 @@ def plot_models_range(name: str,
     plt.grid(axis='both', which='both', ls='--')
     plt.tight_layout()
 
+
+def plot_models_range_interactive(name: str,
+                                  models: Sequence[Model],
+                                  previous: ModelEnum,
+                                  add_points: bool = False) -> None:
+    '''
+    Plot a fill_between for all models' low and high values using an
+    alpha (transparency) equal to 1/num_models. Plot a regular line
+    for all fixed prices.
+
+    Shows ~probability of various prices based on your possible models.
+    '''
+    plot_models_range(name, models, previous, add_points)
     plt.show()
+
+
+def plot_models_range_data(name: str,
+                           models: Sequence[Model],
+                           previous: ModelEnum,
+                           add_points: bool = False) -> None:
+    '''
+    Plot a fill_between for all models' low and high values using an
+    alpha (transparency) equal to 1/num_models. Plot a regular line
+    for all fixed prices.
+
+    Shows ~probability of various prices based on your possible models.
+    '''
+    plot_models_range(name, models, previous, add_points)
+    buff = io.BytesIO()
+    plt.savefig(buff)
+    return buff.getvalue()
 
 
 def global_plot(island_models: Iterable[MultiModel]) -> None:
