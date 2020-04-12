@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
+import pickle
 from typing import Any, Dict, Generator, Optional
 
 import pydantic
@@ -106,6 +108,10 @@ class Island:
             list(self.model_group.models),
             self.previous_week
         )
+
+    def checksum(self):
+        data = pickle.dumps((self._data, self.name))
+        return hashlib.md5(data).hexdigest()
 
 
 class Archipelago:
