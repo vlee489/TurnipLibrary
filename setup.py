@@ -23,6 +23,7 @@ def main():
         'setup_requires': [
         ],
         'install_requires': [
+            'pyyaml',
             'pydantic',
             'matplotlib',
         ],
