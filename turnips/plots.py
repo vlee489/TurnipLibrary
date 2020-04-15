@@ -25,9 +25,6 @@ def plot_models_range(name: str,
     Shows ~probability of various prices based on your possible models.
     '''
 
-    if len(models) == 0:
-        return None
-
     colors = {
         TRIPLE: 'orange',
         SPIKE: 'green',
@@ -36,6 +33,20 @@ def plot_models_range(name: str,
     }
 
     _fig, ax = plt.subplots()
+
+    # cosmetics
+    ax.set_title(f'Island {name}: current: !!ERROR!!; Last: {previous.name}')
+    ax.set_ylabel('Turnip Price')
+    ax.set_xticklabels(['Mon AM', 'Mon PM', 'Tue AM', 'Tue PM', 'Wed AM', 'Wed PM',
+                        'Thu AM', 'Thu PM', 'Fri AM', 'Fri PM', 'Sat AM', 'Sat PM'])
+    ax.xaxis.set_ticks(range(2, 14))
+    plt.xticks(rotation=45)
+    plt.grid(axis='both', which='both', ls='--')
+    ax.set_ylim(0, 660)
+    plt.tight_layout()
+
+    if len(models) == 0:
+        return
 
     # when is last data point (assumes contiguous), plot a line for those
     # TODO: figure out how do do this when it isn't contiguous
@@ -87,14 +98,6 @@ def plot_models_range(name: str,
     msummary = '+'.join(['{}_{{{}}}^{{{:.2f}}}'.format(t, l.name, adjusted_priors[l])
                          for l, t in model_counts.items()])
     ax.set_title(f'Island {name}: ${len(models)}_{{total}}={msummary}$, Last: {previous.name}')
-    ax.set_ylabel('Turnip Price')
-    ax.set_xticklabels(['Mon AM', 'Mon PM', 'Tue AM', 'Tue PM', 'Wed AM', 'Wed PM',
-                        'Thu AM', 'Thu PM', 'Fri AM', 'Fri PM', 'Sat AM', 'Sat PM'])
-    ax.xaxis.set_ticks(range(2, 14))
-    plt.xticks(rotation=45)
-    plt.grid(axis='both', which='both', ls='--')
-    ax.set_ylim(0, 660)
-    plt.tight_layout()
 
 
 def plot_models_range_interactive(name: str,
