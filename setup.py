@@ -7,7 +7,7 @@ def main():
     """turnips installation wrapper"""
     kwargs = {
         'name': 'turnips',
-        'version': '0.6.1',
+        'version': '0.6.2',
         'author': 'nago',
         'author_email': 'nago@malie.io',
         'description': 'turnips are vegetables with a creamy white color and a purple top.',
