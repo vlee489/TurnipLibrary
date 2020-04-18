@@ -48,26 +48,53 @@ def plot_models_range(name: str,
     if len(models) == 0:
         return
 
-    # when is last data point (assumes contiguous), plot a line for those
-    # TODO: figure out how do do this when it isn't contiguous
     a_model = models[0]
 
+    continuous_priced_days = []
+    continuous_priced_chunk = set()
+    continuous_unpriced_days = []
+    continuous_unpriced_chunk = set()
     for day in range(2, 14):
+        # does this day have data?
         if a_model.timeline[TimePeriod(day)].price.is_atomic:
-            continue
-        else:
-            # no precise data!
-            if day == 2:
-                final_precise = 2
+            # is tomorrow a valid day to have data?
+            if day < 13:
+                # does tomorrow have data?
+                if a_model.timeline[TimePeriod(day + 1)].price.is_atomic:
+                    # build onto the chunk
+                    continuous_priced_chunk.update([day, day + 1])
+                # chunk broken.
+                else:
+                    continuous_priced_chunk.update([day])
+                    continuous_priced_days.append(list(continuous_priced_chunk))
+                    continuous_priced_chunk = set()
             else:
-                final_precise = day - 1
+                # end of the week, finish the priced_days
+                continuous_priced_days.append(list(continuous_priced_chunk))
+        # today does not have data
+        else:
+            # is tomorrow a valid day to have data?
+            if day < 13:
+                # does it?
+                if not a_model.timeline[TimePeriod(day + 1)].price.is_atomic:
+                    # build the chunk
+                    if day != 2:
+                        # add yesterday unless today is monday_am
+                        continuous_unpriced_chunk.update([day - 1, day, day + 1])
+                    else:
+                        continuous_unpriced_chunk.update([day, day + 1])
+                # chunk broken
+                else:
+                    continuous_unpriced_chunk.update([day -1, day, day + 1])
+                    continuous_unpriced_days.append(list(sorted(continuous_unpriced_chunk, key=lambda x: x)))
+                    continuous_unpriced_chunk = set()
+            else:
+                # end of the week, finish the unpriced_days
+                continuous_unpriced_days.append(list(continuous_unpriced_chunk))
 
-                # plot known data
-                vals = [a_model.timeline[TimePeriod(day)].price.value
-                        for day in range(2, final_precise + 1)]
-                days = range(2, final_precise + 1)
-                plt.plot(days, vals, c='black')
-            break
+    for chunk in continuous_priced_days:
+        vals = [a_model.timeline[TimePeriod(day)].price.value for day in chunk]
+        plt.plot(chunk, vals, c='black')
 
     model_counts = Counter(x.model_type for x in models)
     remaining_model_types = model_counts.keys()
@@ -76,23 +103,25 @@ def plot_models_range(name: str,
     adjusted_priors = {model: MARKOV[previous][model] / remaining_probability
                        for model in model_counts.keys()}
 
-    days = range(final_precise, 14)
-    for model in models:
-        low_vals = [model.timeline[TimePeriod(day)].price.lower
-                    for day in range(final_precise, 14)]
-        high_vals = [model.timeline[TimePeriod(day)].price.upper
-                     for day in range(final_precise, 14)]
+    for chunk in continuous_unpriced_days:
+        if len(chunk) == 1:
+            # if this is one day of unpriced data, connect it to the neighbors.
+            value = chunk[0]
+            chunk = [value - 1, value, value + 1]
+        for model in models:
+            low_vals = [model.timeline[TimePeriod(day)].price.lower for day in chunk]
+            high_vals = [model.timeline[TimePeriod(day)].price.upper for day in chunk]
 
-        if previous != ModelEnum.unknown:
-            alpha = adjusted_priors[model.model_type] / model_counts[model.model_type]
-        else:
-            alpha = 1 / len(models)
+            if previous != ModelEnum.unknown:
+                alpha = adjusted_priors[model.model_type] / model_counts[model.model_type]
+            else:
+                alpha = 1 / len(models)
 
-        plt.fill_between(days, low_vals, high_vals, alpha=alpha, color=colors[model.model_type])
+            plt.fill_between(chunk, low_vals, high_vals, alpha=alpha, color=colors[model.model_type])
 
-        if add_points:
-            plt.scatter(days, low_vals, c='black', s=2)
-            plt.scatter(days, high_vals, c='black', s=2)
+            if add_points:
+                plt.scatter(chunk, low_vals, c='black', s=2)
+                plt.scatter(chunk, high_vals, c='black', s=2)
 
     # cosmetics
     msummary = '+'.join(['{}_{{{}}}^{{{:.2f}}}'.format(t, l.name, adjusted_priors[l])
