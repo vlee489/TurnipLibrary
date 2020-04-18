@@ -110,7 +110,7 @@ class Island:
         )
 
     def checksum(self):
-        data = pickle.dumps((self._data, self.name))
+        data = pickle.dumps((self._data.dict(), self.name))
         return hashlib.md5(data).hexdigest()
 
 
