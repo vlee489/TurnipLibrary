@@ -7,7 +7,7 @@ def main():
     """turnips installation wrapper"""
     kwargs = {
         'name': 'turnips',
-        'version': '0.6.2',
+        'use_scm_version': True,
         'author': 'nago',
         'author_email': 'nago@malie.io',
         'description': 'turnips are vegetables with a creamy white color and a purple top.',
@@ -21,8 +21,10 @@ def main():
             "Programming Language :: Python :: 3",
         ],
         'setup_requires': [
+            'setuptools_scm'
         ],
         'install_requires': [
+            'setuptools_scm',
             'pyyaml',
             'pydantic',
             'matplotlib',
