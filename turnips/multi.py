@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections import Counter
 import logging
 from typing import Callable, Dict, Generator, List, Optional, Set, Type
@@ -23,6 +24,28 @@ class RangeSet:
 
     def add(self, value: int) -> None:
         self._set.add(value)
+
+    def highest(self) -> int:
+        num = 0
+        for i in self._set:
+            if i > num:
+                num = i
+        return num
+
+    def lowest(self) -> int:
+        num = 99999999
+        for i in self._set:
+            if i < num:
+                num = i
+        return num
+
+    def output(self) -> str:
+        string = ""
+        if len(self._set) < 2:
+            string = str(self.highest())
+        else:
+            string = "{} - {}".format(self.lowest(), self.highest())
+        return string
 
     def __str__(self) -> str:
         sortlist = sorted(list(self._set))
@@ -103,10 +126,8 @@ class MultiModel:
                 counter.update(mhist[timename])
         return histogram
 
-    def summary(self) -> None:
-        print('')
-        print("  Summary: ")
-        print("    {:13} {:23} {:23} {:6}".format('Time', 'Price', 'Likely', 'Odds'))
+    def summary(self) -> dict:
+        dataJson = {}
         hist = self.histogram()
         for time, pricecounts in hist.items():
             # Gather possible prices
@@ -126,11 +147,15 @@ class MultiModel:
             for likely in likelies:
                 rset.add(likely[0])
 
-            time_col = f"{time}:"
-            price_col = f"{str(pset)};"
-            likely_col = f"{str(rset)};"
-            chance_col = f"({pct:0.2f}%)"
-            print(f"    {time_col:13} {price_col:23} {likely_col:23} {chance_col:6}")
+            time_col = f"{time}"
+            dataJson[time_col] = {}
+            price_col = f"{str(pset)}"
+            dataJson[time_col]['price'] = pset.output()
+            likely_col = f"{str(rset)}"
+            dataJson[time_col]['likely'] = rset.output()
+            chance_col = f"{pct:0.2f}%"
+            dataJson[time_col]['chance'] = chance_col
+        return dataJson
 
     def detailed_report(self) -> None:
         raise NotImplementedError
